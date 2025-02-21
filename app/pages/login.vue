@@ -49,7 +49,7 @@
         <UButton
           type="submit"
           class="w-full justify-center py-2"
-          trailing-icon="i-lucide-arrow-right"
+          :trailing-icon="loading ? 'i-lucide-loader' : 'i-lucide-arrow-right'"
         >
           Continue
         </UButton>
@@ -67,7 +67,6 @@ definePageMeta({
 });
 
 import { z } from "zod";
-import type { FormSubmitEvent } from "@nuxt/ui";
 
 const schema = z.object({
   email: z.string().email("Invalid email"),
@@ -76,7 +75,7 @@ const schema = z.object({
 
 type Schema = z.output<typeof schema>;
 
-const state = reactive<Partial<Schema>>({
+const state = ref<Partial<Schema>>({
   email: undefined,
   password: undefined,
 });
@@ -84,12 +83,31 @@ const state = reactive<Partial<Schema>>({
 const show = ref(false);
 
 const toast = useToast();
-async function onSubmit(event: FormSubmitEvent<Schema>) {
-  toast.add({
-    title: "Success",
-    description: "The form has been submitted.",
-    color: "success",
-  });
-  console.log(event.data);
+const { $jwtAuth } = useNuxtApp();
+const errors = ref<Record<string, string> | null>(null);
+const loading = ref(false);
+async function onSubmit() {
+  loading.value = true;
+  errors.value = null;
+  try {
+    await $jwtAuth.login(
+      {
+        email: state.value.email,
+        password: state.value.password,
+      },
+      // optional callback function
+      (data) => {
+        toast.add({
+          title: "Welcome back!",
+          color: "success",
+        });
+        navigateTo("/");
+      }
+    );
+  } catch (e) {
+    errors.value = e.errors;
+  }
+
+  loading.value = false;
 }
 </script>
